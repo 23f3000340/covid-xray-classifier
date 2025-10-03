@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVID-19 X-Ray Classifier</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background: #f0f0f0;
+        }
+        input[type="file"] { display: none; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #preview {
+            max-width: 100%;
+            margin: 20px 0;
+            border-radius: 10px;
+            display: none;
+        }
+        .result {
+            margin-top: 30px;
+            display: none;
+        }
+        .prediction {
+            font-size: 1.5em;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .prediction.covid { background: #ffebee; color: #c62828; }
+        .prediction.normal { background: #e8f5e9; color: #2e7d32; }
+        .prediction.viral { background: #fff3e0; color: #ef6c00; }
+        .prob-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .prob-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: white;
+            font-weight: bold;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🫁 COVID-19 X-Ray Classifier</h1>
+        <p class="subtitle">AI-Powered | 99% Accuracy</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>📁 Click to upload chest X-ray</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <img id="preview" alt="Preview">
+        <button class="btn" id="predictBtn" disabled>🔍 Analyze</button>
+        <div class="loader" id="loader"></div>
+        
+        <div class="result" id="result">
+            <h2>Results</h2>
+            <div class="prediction" id="predictionBox"></div>
+            <div id="probabilities"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const predictBtn = document.getElementById('predictBtn');
+        const loader = document.getElementById('loader');
+        const result = document.getElementById('result');
+        let selectedFile = null;
+
+        uploadArea.onclick = () => fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    predictBtn.disabled = false;
+                };
+                reader.readAsDataURL(selectedFile);
+            }
+        };
+
+        predictBtn.onclick = async () => {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            predictBtn.disabled = true;
+            loader.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                loader.style.display = 'none';
+                result.style.display = 'block';
+                
+                const predBox = document.getElementById('predictionBox');
+                predBox.textContent = `${data.prediction} (${(data.confidence * 100).toFixed(1)}%)`;
+                predBox.className = 'prediction ' + data.prediction.toLowerCase().replace(' ', '-');
+                
+                const probsDiv = document.getElementById('probabilities');
+                probsDiv.innerHTML = '<h3>Probabilities:</h3>';
+                for (const [cls, prob] of Object.entries(data.all_probabilities)) {
+                    probsDiv.innerHTML += `
+                        <div style="margin: 10px 0;">
+                            <div>${cls}</div>
+                            <div class="prob-bar">
+                                <div class="prob-fill" style="width: ${prob * 100}%">${(prob * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                predictBtn.disabled = false;
+            } catch (error) {
+                alert('Error: ' + error.message);
+                loader.style.display = 'none';
+                predictBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

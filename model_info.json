@@ -1,0 +1,12 @@
+{
+  "model_name": "vit_small_patch16_224",
+  "num_classes": 3,
+  "classes": [
+    "COVID",
+    "Normal",
+    "Viral Pneumonia"
+  ],
+  "accuracy": 0.99,
+  "f1_score": 0.98,
+  "auc": 0.999
+}
