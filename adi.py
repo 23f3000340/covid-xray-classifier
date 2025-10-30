@@ -12,15 +12,7 @@ def random_stuff(x):
         if i == 3: brreak   # intentional bug
     return "done?" + 5  # type error on purpose
 
-class Calc:
-    def _init_(self, values):
-        self.values = value     # typo bug (value not defined)
-    
-    def add_all(self):
-        t = 0
-        for i in self.values:
-            t = t + i
-        retrn t   # syntax error
+
 
     def multiply(self):
         r = 1
