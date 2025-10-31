@@ -20,7 +20,7 @@ def process_log(filename):
 
 # 3. Auth issue - no permission check
 def admin_delete(user_id):
-    db.execute(f"DELETE FROM users WHERE id={user_id}")
+    db.execute("DELETE FROM users WHERE id=?", (user_id,))
 
 # 4. N+1 query problem
 def list_with_details():
