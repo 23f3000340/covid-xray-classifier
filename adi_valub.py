@@ -5,7 +5,12 @@ user_count = 0
 
 def add_user():
     global user_count
-    user_count += 1  # Non-atomic
+    lock = threading.Lock()
+
+def add_user():
+    global user_count
+    with lock:
+        user_count += 1
 
 # 2. Memory leak - file not closed
 def process_log(filename):
